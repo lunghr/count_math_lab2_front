@@ -6,7 +6,8 @@ import "@/components/System.vue";
 
 const router = useRouter();
 let response = ref([])
-const equations = ['sin(x + y) - 1.4x = 0, \n x^2 + y^2 = 1'];
+const equations = ['sin(x + y) - 1.4x = 0, \n x^2 + y^2 = 1', 'sin(x + 0.5) - y = 1, \n cos(y - 2) + x = 0',
+  'sin(x + y) = 1.5x - 0.1, \n x^2 + 2y^2 = 1'];
 let selectedEquation = ref(null);
 const x = ref(null)
 const y = ref(null)
@@ -15,14 +16,19 @@ let warn = false;
 const accuracy = ref(null)
 let currentAccuracy = ref(null);
 let currentX = ref(null);
-let  currentY = ref(null);
+let currentY = ref(null);
 let iteration = ref(0);
 let iterations = ref([])
 let showPic = ref(false);
+let equation = ref(null);
+let submitted = ref(false);
+let img = ref("")
 
 
 function pickEquation(index) {
   selectedEquation.value = selectedEquation.value === index ? null : index;
+  equation.value = index+1;
+  console.log(equation.value)
 }
 
 function validate() {
@@ -36,6 +42,12 @@ function filterInput(event) {
 
 async function sendData() {
   console.log('mgm')
+  if (!equation.value) {
+    submitted.value = true;
+    setTimeout(() => {
+      submitted.value = false;
+    }, 2500);
+  }
   if (!validate()) {
     warn = true;
     message.value = "Данные неккоректны";
@@ -44,21 +56,23 @@ async function sendData() {
       message.value = "Выберите приближение и погрешность";
     }, 2500);
   } else {
-
     const res = await axios.post('http://localhost:8080/methods/res', {
           root: "system",
+          equation: equation.value,
+          type: "system",
           a: x.value,
           b: y.value,
-          accuracy: 0.01
+          accuracy: accuracy.value,
         }, {
           headers: {
             CalculationMethod: 'NewtonForSystems'
           }
         }
     );
+    img.value = equation.value;
     iteration.value = 0;
     iterations.value = res.data;
-    response = [iterations.value[iterations.value.length - 1].x, iterations.value[iterations.value.length-1].y];
+    response = [iterations.value[iterations.value.length - 1].x, iterations.value[iterations.value.length - 1].y];
     console.log("resp:" + iterations.value.length)
     console.log("ans:" + response)
     showPic.value = true;
@@ -107,7 +121,7 @@ export default {
   </button>
 
   <div class="equation-container">
-    <p>Выберите уравнение</p>
+    <p :class="{'pulse':submitted && !equation}">Выберите уравнение</p>
 
     <button
         v-for="(equation, index) in equations"
@@ -141,13 +155,14 @@ export default {
   <div class="response-wrapper">
     <div class="response">
       <span class="signature">Ответ: </span>
-      <span :style="{color:'rgba(236, 55, 153, 0.6)'}"v-if="response">({{ response[0]?.toFixed(5)}}; {{response[1]?.toFixed(5)}})</span>
+      <span :style="{color: 'rgba(80, 83, 236, 0.4)'}"
+            v-if="iteration>0">({{ response[0]?.toFixed(5) }}; {{ response[1]?.toFixed(5) }})</span>
 
       <div class="iteration">
-        <div>X: <span :style="{color:'rgba(80, 83, 236, 0.8)'}">{{ currentX }}</span></div>
-        <div>Y: <span :style="{color:'rgba(80, 83, 236, 0.8)'}">{{ currentY }}</span></div>
-        <div>Погрешность: <span :style="{color:'rgba(80, 83, 236, 0.8)'}">{{ currentAccuracy }}</span></div>
-        <span id="index" v-if="iteration> 0"> {{ iteration }}</span>
+        <div>X: <span :style="{color: 'rgba(236, 55, 153, 0.6)'}">{{ currentX }}</span></div>
+        <div>Y: <span :style="{color: 'rgba(236, 55, 153, 0.6)'}">{{ currentY }}</span></div>
+        <div>Погрешность: <span :style="{color: 'rgba(236, 55, 153, 0.6)'}">{{ currentAccuracy }}</span></div>
+        <span id="index" v-if="iteration> 0" :style="{color: 'rgba(80, 83, 236, 0.4)'}"> {{ iteration }}</span>
       </div>
     </div>
     <div class="iter-buttons">
@@ -155,8 +170,15 @@ export default {
       <button id="next" @click="next"> ></button>
     </div>
   </div>
-  <div class="graph" v-if="showPic">
+  <div class="graph" v-if="showPic && img == 1">
     <img src="./icons/system_1.jpg">
+  </div>
+
+  <div class="graph" v-if="showPic && img == 2">
+    <img src="./icons/system_2.jpg">
+  </div>
+  <div class="graph" v-if="showPic && img == 3">
+    <img src="./icons/system_3.jpg">
   </div>
 
   <button class="submit-button" @click="sendData">Решение</button>
@@ -178,12 +200,14 @@ export default {
 label {
   visibility: hidden;
 }
-.note{
+
+.note {
   position: fixed;
-  top: 620px;
+  top: 570px;
   white-space: nowrap;
   transition: 0.5s ease-in-out;
 }
+
 .pulse {
   transition: 0.5s ease-in-out;
   animation: pulse 2.5s infinite ease-in-out;
@@ -196,18 +220,17 @@ input {
   color: rgba(203, 63, 140, 0.7);
   text-align: center;
   position: relative;
-  height: 130px;
-  width: 173px;
-  margin-top: 7px;
-  left: -3%;
+  height: 160px;
+  width: 200px;
+  left: -5%;
   background-color: rgba(203, 63, 140, 0.05);
 
   border-color: transparent;
 }
 
-.input-container{
+.input-container {
   position: fixed;
-  top: 700px;
+  top: 670px;
   white-space: nowrap;
 }
 
@@ -264,21 +287,23 @@ input:focus::-webkit-input-placeholder {
 .equation-button {
   background-color: rgba(203, 63, 140, 0.05);
   border-color: transparent;
-  height: 90px;
+  height: 120px;
+  margin-top: 10px;
   position: relative;
 }
 
 #sign {
   text-align: left;
-  font-size: 60px;
+  font-size: 80px;
   position: absolute;
   top: 10%;
   left: 20.8%;
-  font-weight: 350;
+  font-weight: 250;
   font-family: Bahnschrift, serif;
 }
 
 #first {
+  font-size: 25px;
   position: absolute;
   text-align: left;
   left: 27%;
@@ -286,6 +311,7 @@ input:focus::-webkit-input-placeholder {
 }
 
 #second {
+  font-size: 25px;
   position: absolute;
   text-align: left;
   left: 27%;
@@ -323,16 +349,17 @@ p {
 }
 
 .submit-button {
-  position: absolute;
-  top: 90%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  position: fixed;
+  top: 865px;
+  left: 865px;
   color: #2c2d38;
-  font-size: 20px;
-  width: 280px;
-  height: 70px;
+  font-size: 25px;
+  width: 530px;
+  height: 80px;
   font-family: "Russo One", serif;
-  font-weight: bolder;
+  font-weight: bold;
+  white-space: nowrap;
+
 
   border: 1.7px solid black;
 
@@ -342,7 +369,7 @@ p {
   position: fixed;
   padding: 15px;
   top: 575px;
-  left: 800px;
+  left: 850px;
 
   height: fit-content;
 }
@@ -353,10 +380,10 @@ p {
 }
 
 .response {
-  background-color: #08009D07;
+  background-color: rgba(203, 63, 140, 0.05);
   position: fixed;
   padding: 15px;
-  color: rgba(236, 55, 153, 0.6);
+  color: rgba(80, 83, 236, 0.4);
   font-family: "Russo One", serif;
   font-weight: 300;
   font-size: 30px;
@@ -399,5 +426,13 @@ p {
 
 .signature {
   color: #ffffff;
+}
+
+img {
+  height: 500px;
+  width: 525px;
+  position: fixed;
+  top: 70px;
+  left: 865px;
 }
 </style>

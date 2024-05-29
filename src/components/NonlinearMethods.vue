@@ -12,7 +12,8 @@ const root = ref(null);
 let submitted = ref(false);
 let iteration = ref(0);
 let iterations = ref([])
-const equations = ['2.3x^3 + 5.75x^2 - 7.41x - 10.6'];
+const equations = ['2.3x^3 + 5.75x^2 - 7.41x - 10.6', '2.74x^3 - 1.93x^2 - 15.28x - 3.72',
+'x^3 + 2.84x^2 - 5.606x - 14.766'];
 let selectedEquation = ref(null);
 let currentAccuracy = ref(null);
 let currentX = ref(null);
@@ -20,14 +21,17 @@ let response = ref(null);
 let message = ref("Выберите погрешность")
 let warn = false;
 const accuracy = ref(null)
+let equation = ref(null);
+let img = ref('');
 function pickEquation(index) {
   selectedEquation.value = selectedEquation.value === index ? null : index;
+  equation.value = index+1;
+  console.log(equation.value)
 }
-
 
 async function sendData() {
   iterations = [];
-  if (!method.value || !root.value) {
+  if (!method.value || !root.value || !equation.value) {
     submitted.value = true;
     setTimeout(() => {
       submitted.value = false;
@@ -40,13 +44,15 @@ async function sendData() {
       warn = false;
       message.value = "Выберите погрешность";
     }, 2500);
-  }else if (method.value && root.value) {
-    const res = await axios.post('http://localhost:8080/methods/res', {root: root.value, a: 0, b: 0, accuracy: accuracy.value}, {
+  }else if (method.value && root.value && equation.value) {
+    const res = await axios.post('http://localhost:8080/methods/res', {root: root.value, equation: equation.value, type: "nonlinear",
+      a: 0, b: 0, accuracy: accuracy.value}, {
           headers: {
             CalculationMethod: method.value
           }
         }
     );
+    img.value = equation.value;
     iteration.value = 0;
     iterations.value = res.data;
     response = iterations.value[iterations.value.length - 1].x;
@@ -84,8 +90,8 @@ function validate() {
 }
 
 function filterInput(event) {
-  const regex = /[^0-9.,-]/g;
-  event.target.value = event.target.value.replace(regex, '');
+  const regex = /[^0-9.-]/g;
+  event.target.value = event.target.value.replace(',', '.');
 }
 
 
@@ -103,7 +109,7 @@ export default {
 
   <div class="form">
     <div class="equation-container">
-      <p>Выберите уравнение</p>
+      <p :class="{'pulse':submitted && !equation}">Выберите уравнение</p>
       <button
           v-for="(equation, index) in equations"
           :key="index"
@@ -180,8 +186,15 @@ export default {
     </div>
   </div>
 
-  <div class="graph" v-if="showPic">
+  <div class="graph" v-if="showPic && img == 1">
     <img src="./icons/nonlinear_1.jpg">
+  </div>
+
+  <div class="graph" v-if="showPic && img == 2">
+    <img src="./icons/nonlinear_2.jpg">
+  </div>
+  <div class="graph" v-if="showPic && img == 3">
+    <img src="./icons/nonlinear_3.jpg">
   </div>
 
 
@@ -299,6 +312,8 @@ img {
   align-content: center;
   justify-content: center;
   margin-top: 190px;
+  position: fixed;
+  white-space: nowrap;
 }
 
 .signature {
@@ -310,9 +325,10 @@ img {
   font-weight: bolder;
   font-size: 25px;
   color: white;
-  position: absolute;
+  position: fixed;
   top: 7%;
   left: 5%;
+  width: 400px;
 }
 
 .methods-container {
